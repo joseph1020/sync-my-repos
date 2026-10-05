@@ -1,10 +1,10 @@
 # sync-my-repos
 
-`sync-my-repos` interactively checks Git repositories directly inside `~/Developer` against their configured upstreams. It reports remote history separately from local working-tree changes and asks before fetching or pulling.
+`sync-my-repos` interactively checks Git repositories directly inside `~/Developer` against their configured upstreams by default. The scan root can be overridden with a positional argument or environment variable. It reports remote history separately from local working-tree changes and asks before fetching or pulling.
 
 ### Features
 
-- Scans top-level directories in `~/Developer` and confirms each is a Git repository whose root is that directory.
+- Scans top-level directories in the selected root (default: `~/Developer`) and confirms each is a Git repository whose root is that directory.
 - Shows the current branch, upstream, origin URL, and working-tree changes.
 - Prompts with `Fetch and compare with remote? [y]es [N]o [a]ll [q]uit`.
 - `a` approves fetch and comparison for the remaining repositories in that run only.
@@ -17,7 +17,8 @@
 
 - Bash
 - Git
-- Repositories under `~/Developer` with an upstream configured to compare against
+- A selected scan root (default: `~/Developer`)
+- Repositories under the selected root with an upstream configured to compare against
 
 ## Installation
 
@@ -33,10 +34,28 @@ ln -s "$HOME/Developer/sync-my-repos/sync-my-repos" "$HOME/bin/sync-my-repos"
 sync-my-repos
 ```
 
+Choose another root with a positional argument:
+
+```sh
+sync-my-repos /path/to/repos
+```
+
+Or set the environment variable (used when no positional argument is given):
+
+```sh
+SYNC_MY_REPOS_ROOT=/path/to/repos sync-my-repos
+```
+
+The positional argument takes precedence over `SYNC_MY_REPOS_ROOT`. The selected root must exist and be a directory.
+
 ## Behavior
 
 The script fetches only after approval. It skips repositories without an active branch or configured upstream. A requested pull uses `git pull --ff-only`; a failed fetch or pull is reported and the scan continues where applicable.
 
 ## Limitations
 
-Only immediate child directories of `~/Developer` are scanned. Nested repositories are not searched. Fetching contacts each configured remote and updates its remote-tracking information.
+Only immediate child directories of the selected root are scanned. Nested repositories are not searched. Fetching contacts each configured remote and updates its remote-tracking information.
+
+## License
+
+[MIT](LICENSE)

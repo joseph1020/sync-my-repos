@@ -2,8 +2,13 @@
 
 set -u
 
-ROOT="$HOME/Developer"
+ROOT="${1:-${SYNC_MY_REPOS_ROOT:-$HOME/Developer}}"
 approve_all=false
+
+if [[ ! -d "$ROOT" ]]; then
+    echo "ERROR: repository root is not a directory: $ROOT" >&2
+    exit 1
+fi
 
 for repo in "$ROOT"/*; do
     [[ -d "$repo" ]] || continue
