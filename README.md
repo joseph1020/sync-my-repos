@@ -1,5 +1,7 @@
 # sync-my-repos
 
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 `sync-my-repos` interactively checks Git repositories directly inside `~/Developer` against their configured upstreams by default. The scan root can be overridden with a positional argument or environment variable. It reports remote history separately from local working-tree changes and asks before fetching or pulling.
 
 ### Features
@@ -58,4 +60,4 @@ Only immediate child directories of the selected root are scanned. Nested reposi
 
 ## License
 
-[MIT](LICENSE)
+sync-my-repos is released under the MIT License. See [LICENSE](LICENSE).
