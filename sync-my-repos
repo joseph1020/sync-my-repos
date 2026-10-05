@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+set -u
+
+ROOT="$HOME/Developer"
+approve_all=false
+
+for repo in "$ROOT"/*; do
+    [[ -d "$repo" ]] || continue
+
+    top=$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null || true)
+
+    [[ -n "$top" ]] || continue
+    [[ "$top" == "$repo" ]] || continue
+    echo
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📦 $repo"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    branch=$(git -C "$repo" branch --show-current 2>/dev/null || true)
+
+    if [[ -z "$branch" ]]; then
+        echo "SKIP: detached HEAD or no active branch"
+        continue
+    fi
+
+    upstream=$(git -C "$repo" rev-parse \
+        --abbrev-ref \
+        --symbolic-full-name '@{u}' \
+        2>/dev/null || true)
+
+    origin=$(git -C "$repo" remote get-url origin 2>/dev/null || true)
+
+    echo "Branch:   $branch"
+    [[ -n "$upstream" ]] && echo "Upstream: $upstream"
+    [[ -n "$origin" ]] && echo "Origin:   $origin"
+
+    status=$(git -C "$repo" status --short)
+
+    if [[ -n "$status" ]]; then
+        echo
+        echo "⚠️  Working tree has local changes:"
+        git -C "$repo" status --short
+    fi
+
+    echo
+
+    if [[ "$approve_all" == true ]]; then
+        echo "Fetch and compare with remote? [auto: all]"
+    else
+        read -r -p "Fetch and compare with remote? [y]es [N]o [a]ll [q]uit " answer
+
+        case "$answer" in
+            y|Y|yes|YES)
+                ;;
+            a|A|all|ALL)
+                approve_all=true
+                echo "→ Fetch/compare auto-approved for remaining repositories."
+                ;;
+            q|Q|quit|QUIT)
+                echo "Stopped."
+                exit 0
+                ;;
+            *)
+                echo "SKIP"
+                continue
+                ;;
+        esac
+    fi
+
+    if [[ -z "$upstream" ]]; then
+        echo "SKIP: no upstream configured"
+        continue
+    fi
+
+    echo "→ Fetching..."
+    if ! git -C "$repo" fetch --prune; then
+        echo "ERROR: fetch failed"
+        continue
+    fi
+
+    read -r behind ahead <<<"$(
+        git -C "$repo" rev-list \
+            --left-right \
+            --count \
+            HEAD..."$upstream"
+    )"
+
+    echo "Ahead:    $ahead"
+    echo "Behind:   $behind"
+
+    if (( ahead == 0 && behind == 0 )); then
+        echo "✅ Remote history is in sync."
+
+        if [[ -n "$status" ]]; then
+            echo "⚠️  Working tree has local changes."
+        else
+            echo "✅ Working tree is clean."
+        fi
+
+    elif (( ahead == 0 && behind > 0 )); then
+        if [[ -n "$status" ]]; then
+            echo "⚠️  Remote is ahead by $behind commit(s), but working tree is dirty."
+            echo "No automatic pull performed."
+            continue
+        fi
+
+        echo
+        read -r -p "Remote is ahead by $behind commit(s). Fast-forward pull? [y/N] " pull_answer
+
+        case "$pull_answer" in
+            y|Y|yes|YES)
+                if git -C "$repo" pull --ff-only; then
+                    echo "✅ Updated successfully."
+                else
+                    echo "ERROR: fast-forward pull failed."
+                fi
+                ;;
+            *)
+                echo "No pull performed."
+                ;;
+        esac
+
+    elif (( ahead > 0 && behind == 0 )); then
+        echo "⬆️  Local branch is ahead by $ahead commit(s)."
+        [[ -n "$status" ]] && echo "⚠️  Working tree also has local changes."
+        echo "No automatic push performed."
+
+    else
+        echo "⚠️  DIVERGED: local and remote both contain unique commits."
+        [[ -n "$status" ]] && echo "⚠️  Working tree also has local changes."
+        echo "Manual review required."
+    fi
+done
+
+echo
+echo "Done."
